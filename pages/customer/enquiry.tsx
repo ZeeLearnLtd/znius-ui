@@ -61,9 +61,9 @@ export default function EnquiryPage() {
 
     getProducts().then(r => setProducts(r.data.data || [])).catch(() => {
       setProducts([
-        { Product_Id: 15354, Product_Code: '4012991', Product_Name: 'Robotics',          MRP: 599, Product_Category: 'ZNESIGN' },
-        { Product_Id: 15353, Product_Code: '4012990', Product_Name: 'Olympiad (Online)',  MRP: 299, Product_Category: 'ZNESIGN' },
-        { Product_Id: 15352, Product_Code: '4012989', Product_Name: 'Olympiad (Offline)', MRP: 349, Product_Category: 'ZNESIGN' },
+        { Product_Id: 17160, Product_Code: '4012991', Product_Name: 'Robotics',          MRP: 599, Product_Category: 'ZNESIGN' },
+        { Product_Id: 17161, Product_Code: '4012990', Product_Name: 'Olympiad (Online)',  MRP: 299, Product_Category: 'ZNESIGN' },
+        { Product_Id: 17160, Product_Code: '4012989', Product_Name: 'Olympiad (Offline)', MRP: 349, Product_Category: 'ZNESIGN' },
       ]);
     });
 
