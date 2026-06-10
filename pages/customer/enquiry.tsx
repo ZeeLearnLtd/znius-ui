@@ -51,7 +51,7 @@ export default function EnquiryPage() {
 
   // Step 3 – Terms
   const [termsOpened, setTermsOpened]     = useState(false);
-  const [termsLoaded, setTermsLoaded]     = useState(false); // PDF load hua ya nahi
+  const [termsLoaded, setTermsLoaded]     = useState(false); 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsInline, setShowTermsInline] = useState(false);
 
