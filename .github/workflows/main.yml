@@ -1,0 +1,50 @@
+name: ZLLActions
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-to-target:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source repo
+      uses: actions/checkout@v3
+
+    - name: Clone target repo
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "androidapps@zeelearn.com"
+        git clone https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/zeedevcicd/znius-ui.git targetrepo
+        rsync -av --exclude='.git' ./ 
+        cd targetrepo
+        git checkout -B uat
+        #git add .
+        #git commit -m "Automated sync from Repo znius-ui:Clone " || echo "No changes to commit from clone znius-ui:Clone "
+        git pull origin uat --rebase
+        git push origin uat
+    - name: Sync files into target repo
+      run: |
+        #Show current directory
+        #echo "Current directory:"
+        #git config --global user.name "GitHub Actions"
+        #git config --global user.email "androidapps@zeelearn.com"
+        pwd
+        #echo "Files:"
+        #ls -la
+        # Clean target repo (except .git)
+        find targetrepo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+        # Copy from root of current repo into target
+        rsync -av \
+          --exclude='.git' \
+          --exclude='.github/workflows' \
+          ./ targetrepo/
+        cd targetrepo
+        #echo "Changed files:"
+        
+        #git status
+        git add .
+        git commit -m "CICD Commit znius-ui:commit " || echo "No changes to commit znius-ui:commit "
+        git pull --rebase origin uat
+        git push --force origin uat
