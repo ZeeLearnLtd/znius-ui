@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/Zniusorder',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://kubapi.zeelearn.com/V1/commonapieml/api/Zniusorder',
   timeout: 15000,
   withCredentials: true,
 });
