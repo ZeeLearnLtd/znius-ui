@@ -4,6 +4,7 @@ export function statusBadge(status?: string) {
     'BH Rejected':          'badge badge-red',
     'Pending Fin Clearing': 'badge badge-purple',
     'Finance Rejected':     'badge badge-red',
+    'Finance Cleared':      'badge badge-green',  
     'Pending Dispatch':     'badge badge-blue',
     'Dispatched':           'badge badge-blue',
     'Delivered':            'badge badge-teal',

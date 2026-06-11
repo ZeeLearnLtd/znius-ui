@@ -1,10 +1,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://kubapi.zeelearn.com/V1/commonapieml/api/Zniusorder',
+  // In dev & prod, Next.js rewrites /api-proxy/* → external API (no CORS issue)
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api-proxy',
   timeout: 15000,
-  withCredentials: true,
+  // withCredentials removed — was causing CORS rejection when server returns wildcard '*'
 });
+
 export default api;
 
 // ── Auth ─────────────────────────────────────────────────────

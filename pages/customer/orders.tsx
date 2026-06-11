@@ -477,6 +477,9 @@ export default function CustomerOrdersPage() {
     if (status === 'Finance Rejected')
       return { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-50 border-red-200',
                msg: 'Payment was not confirmed. Please contact the finance team.' };
+    if (status === 'Finance Cleared')
+      return { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200',
+               msg: 'Payment confirmed by Finance. Your order is complete.' };
     if (status === 'Pending Dispatch')
       return { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200',
                msg: 'Payment received! Your order is being prepared for dispatch.' };
@@ -542,7 +545,7 @@ export default function CustomerOrdersPage() {
                     <div className="text-right">
                       <p className="font-bold text-brand-700 text-lg">₹{fmt(payable)}</p>
                       {o.Discount_Pct > 0 && (
-                        <p className="text-xs text-slate-400 line-through">₹{fmt(o.Indent_Amount)}</p>
+                        <p className="text-xs text-emerald-600">{o.Discount_Pct}% discount applied</p>
                       )}
                     </div>
                     <span className={cls}>{label}</span>
