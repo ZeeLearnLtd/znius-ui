@@ -61,16 +61,7 @@ export default function Layout({ children, role = 'customer' }: { children: Reac
                 </Link>
               );
             })}
-            {/* Role switcher */}
-            <div className="ml-4 border-l border-white/20 pl-4 flex gap-1">
-              {(['customer', 'bh', 'finance'] as Role[]).map(r => (
-                <Link key={r} href={r === 'customer' ? '/customer/enquiry' : r === 'bh' ? '/bh/dashboard' : '/finance/dashboard'}
-                  className={`text-xs px-2.5 py-1 rounded-lg capitalize transition
-                    ${role === r ? 'bg-white/30 text-white font-semibold' : 'text-white/50 hover:text-white hover:bg-white/10'}`}>
-                  {r}
-                </Link>
-              ))}
-            </div>
+
           </nav>
 
           {/* Mobile */}
