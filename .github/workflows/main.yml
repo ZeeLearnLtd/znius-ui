@@ -16,7 +16,7 @@ jobs:
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "androidapps@zeelearn.com"
-        git clone https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/zeedevcicd/znius-ui.git targetrepo
+        git clone https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/ZeeLearncicd/znius-ui.git targetrepo
         rsync -av --exclude='.git' ./ 
         cd targetrepo
         git checkout -B uat
