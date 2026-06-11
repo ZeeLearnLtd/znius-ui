@@ -12,7 +12,7 @@ import {
   CreditCard, Landmark, Hourglass,
 } from 'lucide-react';
 
-const FINANCE_STATUSES = ['Pending Fin Clearing', 'Pending Dispatch', 'HO Cleared'];
+const FINANCE_STATUSES = ['Pending Fin Clearing', 'Finance Cleared'];
 
 // Small helper — what's the action state for an order?
 function paymentBadge(o: any) {
@@ -217,7 +217,6 @@ export default function FinanceDashboard() {
                     <th>Order #</th>
                     <th>School</th>
                     <th>Date</th>
-                    <th>MRP Total</th>
                     <th>Payable</th>
                     <th>Payment Choice</th>
                     <th>Status</th>
@@ -241,8 +240,14 @@ export default function FinanceDashboard() {
                           <p className="text-xs text-slate-400">{o.Contact_Person}</p>
                         </td>
                         <td className="text-slate-500">{fmtDate(o.Indent_Date)}</td>
-                        <td>₹{fmt(o.Indent_Amount)}</td>
-                        <td className="font-bold text-brand-700">₹{fmt(payable)}</td>
+                        <td className="font-bold text-brand-700">
+                          ₹{fmt(payable)}
+                          {o.Discount_Pct > 0 && (
+                            <p className="text-xs text-emerald-600 font-normal">
+                              {o.Discount_Pct}% off
+                            </p>
+                          )}
+                        </td>
                         <td>
                           <span className={`text-xs px-2 py-1 rounded-full font-medium ${pb.cls}`}>
                             {pb.label}
@@ -308,14 +313,13 @@ export default function FinanceDashboard() {
                       <p className="label">Status</p>
                       <span className={statusBadge(h.Indent_Status).cls}>{h.Indent_Status}</span>
                     </div>
-                    <div><p className="label">MRP Total</p><p className="font-bold">₹{fmt(h.Indent_Amount)}</p></div>
                     <div>
-                      <p className="label">Payable (after disc)</p>
+                      <p className="label">Payable Amount</p>
                       <p className="font-bold text-brand-700">₹{fmt(h.Payable_Amount || h.Indent_Amount)}</p>
                     </div>
                     {h.Discount_Pct > 0 && (
                       <div>
-                        <p className="label">Discount</p>
+                        <p className="label">BH Discount Applied</p>
                         <p className="text-emerald-600 font-semibold">{h.Discount_Pct}%</p>
                       </div>
                     )}
