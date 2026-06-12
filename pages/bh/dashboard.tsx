@@ -64,6 +64,13 @@ export default function BHDashboard() {
 
     const { header, items } = selected;
     const payable = header.Indent_Amount;
+
+    // Hard cap — 33% is absolute max per FRD
+    if (discountPct > 33) {
+      toast.error('Maximum discount allowed is 33%');
+      return;
+    }
+
     const isHighVal = payable * (1 - discountPct / 100) >= 750000;
     for (const item of items) {
       const max = maxDiscount(item.Product_Name, isHighVal);
@@ -235,15 +242,34 @@ export default function BHDashboard() {
                 </div>
 
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="label">Discount Percentage</label>
-                    <span className="text-brand-700 font-bold text-sm">{discountPct}%</span>
+                  <label className="label">Discount Percentage (max 33%)</label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <input type="number" min={0} max={33} step={0.1}
+                        value={discountPct}
+                        onChange={e => {
+                          let v = parseFloat(e.target.value) || 0;
+                          if (v < 0) v = 0;
+                          if (v > 33) v = 33;
+                          setDiscount(Math.round(v * 10) / 10);
+                        }}
+                        onBlur={e => {
+                          let v = parseFloat(e.target.value) || 0;
+                          if (v < 0) v = 0;
+                          if (v > 33) v = 33;
+                          setDiscount(Math.round(v * 10) / 10);
+                        }}
+                        className="input pr-8 text-right font-bold text-brand-700" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">%</span>
+                    </div>
+                    {discountPct > 0 && (
+                      <div className="text-right min-w-[120px]">
+                        <p className="text-xs text-slate-400">Discount Amt</p>
+                        <p className="text-sm font-bold text-emerald-600">– ₹{fmt(selected.header.Indent_Amount * discountPct / 100)}</p>
+                      </div>
+                    )}
                   </div>
-                  <input type="range" min={0} max={35} step={0.5}
-                    value={discountPct}
-                    onChange={e => setDiscount(parseFloat(e.target.value))}
-                    className="w-full accent-brand-600 h-2 cursor-pointer" />
-                  <div className="flex justify-between text-xs text-slate-400 mt-1"><span>0%</span><span>35%</span></div>
+                  <p className="text-xs text-slate-400 mt-1">Enter exact value like 2.3, 5.5, 10 etc. Max allowed: 33%</p>
                 </div>
 
                 <div>

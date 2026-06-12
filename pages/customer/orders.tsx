@@ -143,9 +143,12 @@ function PaymentOptionsPanel({
   onSaved: () => void;
 }) {
   const payable        = order.Payable_Amount ?? order.Indent_Amount;
-  const indentAmount   = order.Indent_Amount;
   const franchiseeId   = order.Franchisee_Id;
   const indentId       = order.Indent_Id;
+
+  // Indent_Amount is now post-discount. Back-calculate original MRP for 7.5L threshold.
+  const discountPct    = order.Discount_Pct || 0;
+  const originalMRP    = discountPct > 0 ? payable / (1 - discountPct / 100) : payable;
 
   // From SP - existing choice (if any)
   const paymentType: 'FULL' | 'LOAN' | null = order.Payment_Type || null;
@@ -154,8 +157,8 @@ function PaymentOptionsPanel({
   const downPayment  = Number(order.PC_Down_Payment   ?? Math.ceil((payable * LOAN_DOWN_PCT) / 100));
   const financeAmt   = Number(order.PC_Finance_Amount ?? payable - downPayment);
 
-  // Eligibility per FRD
-  const loanEligible = indentAmount >= LOAN_MIN_ORDER_VALUE && payable >= LOAN_MIN_DEAL_VALUE;
+  // Eligibility per FRD: original MRP ≥ 7.5L AND deal value (post-discount) ≥ 5L
+  const loanEligible = originalMRP >= LOAN_MIN_ORDER_VALUE && payable >= LOAN_MIN_DEAL_VALUE;
 
   const [selected, setSelected] = useState<'FULL' | 'LOAN' | null>(null);
   const [saving, setSaving]     = useState(false);
@@ -389,8 +392,8 @@ function PaymentOptionsPanel({
               <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
                 <Info size={12} className="flex-shrink-0 mt-0.5" />
                 <span>
-                  Financing is available for orders ≥ ₹{fmt(LOAN_MIN_ORDER_VALUE)} (MRP)
-                  with deal value ≥ ₹{fmt(LOAN_MIN_DEAL_VALUE)} after discount.
+                  Financing requires: original order value ≥ ₹{fmt(LOAN_MIN_ORDER_VALUE)} (before discount)
+                  and payable amount ≥ ₹{fmt(LOAN_MIN_DEAL_VALUE)} (after discount).
                 </span>
               </div>
             )}
