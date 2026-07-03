@@ -34,10 +34,18 @@ export default function EnquiryPage() {
   // Step 0
   const [personal, setPersonal] = useState({
     name: '', email: '', phone: '', school_name: '',
-    address1: '', address2: '', pincode: '',
+    address1: '', address2: '', place: '', zone_code: '', pincode: '',
     state_id: 0, state_name: '', city_id: 0, city_name: '',
     country_id: 1,
   });
+
+  // Zone options — DB me Zone_Code short form save hota hai
+  const ZONES = [
+    { code: 'W', name: 'West Zone' },
+    { code: 'E', name: 'East Zone' },
+    { code: 'N', name: 'North Zone' },
+    { code: 'S', name: 'South Zone' },
+  ];
 
   // Step 1
   const [kyc, setKyc] = useState({
@@ -148,7 +156,8 @@ export default function EnquiryPage() {
   const canNext = () => {
     if (step === 0)
       return personal.name && personal.email && personal.phone &&
-             personal.school_name && personal.address1 && personal.pincode && personal.state_id;
+             personal.school_name && personal.address1 && personal.place &&
+             personal.zone_code && personal.pincode && personal.state_id;
     if (step === 1)
       return kyc.gst_verified || kyc.pan_verified || kyc.aadhar_verified;
     if (step === 2)
@@ -175,6 +184,8 @@ export default function EnquiryPage() {
         contact_person: personal.name,
         address1:       personal.address1,
         address2:       personal.address2,
+        place:          personal.place,
+        zone_code:      personal.zone_code,
         city_id:        personal.city_id,
         city_name:      personal.city_name,
         pin_code:       personal.pincode,
@@ -314,6 +325,19 @@ export default function EnquiryPage() {
                   <label className="label">Address Line 2</label>
                   <input className="input" placeholder="Area / Landmark (optional)" value={personal.address2}
                     onChange={e => setPersonal(p => ({ ...p, address2: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Place *</label>
+                  <input className="input" placeholder="e.g. Mumbai" value={personal.place}
+                    onChange={e => setPersonal(p => ({ ...p, place: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Zone *</label>
+                  <select className="input" value={personal.zone_code}
+                    onChange={e => setPersonal(p => ({ ...p, zone_code: e.target.value }))}>
+                    <option value="">— Select Zone —</option>
+                    {ZONES.map(z => <option key={z.code} value={z.code}>{z.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="label">State *</label>
