@@ -69,7 +69,7 @@ export default function EnquiryPage() {
 
     getProducts().then(r => setProducts(r.data.data || [])).catch(() => {
       setProducts([
-        { Product_Id: 17160, Product_Code: '4012991', Product_Name: 'Robotics',          MRP: 599, Product_Category: 'ZNESIGN' },
+        { Product_Id: 17160, Product_Code: '8100100', Product_Name: 'Robotics',          MRP: 599, Product_Category: 'ZNESIGN' },
         { Product_Id: 17161, Product_Code: '4012990', Product_Name: 'Olympiad (Online)',  MRP: 299, Product_Category: 'ZNESIGN' },
         { Product_Id: 17160, Product_Code: '4012989', Product_Name: 'Olympiad (Offline)', MRP: 349, Product_Category: 'ZNESIGN' },
       ]);
@@ -122,7 +122,7 @@ export default function EnquiryPage() {
   // ─── Product lookup by Product_Code ─────────────────────────
   const findProduct = (type: Item['type']) => {
     const codeMap: Record<Item['type'], string> = {
-      robotics:         '4012991',
+      robotics:         '8100100',
       olympiad_online:  '4012990',
       olympiad_offline: '4012989',
     };
