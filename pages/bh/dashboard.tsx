@@ -9,13 +9,21 @@ import {
   ChevronDown, ChevronUp, ShieldAlert, Copy,
 } from 'lucide-react';
 
+// Discount input mode
+type DiscountMode = 'pct' | 'amt';
+
 export default function BHDashboard() {
   const session = useSession();
   const [orders, setOrders]        = useState<any[]>([]);
   const [loading, setLoading]      = useState(true);
   const [selected, setSelected]    = useState<any>(null);
   const [expanded, setExpanded]    = useState<number | null>(null);
-  const [discountPct, setDiscount] = useState(0);
+
+  // Discount — support both percentage and amount
+  const [discountMode, setDiscountMode] = useState<DiscountMode>('pct');
+  const [discountPct, setDiscountPct]   = useState(0);
+  const [discountAmt, setDiscountAmt]   = useState(0);
+
   const [remarks, setRemarks]      = useState('');
   const [acting, setActing]        = useState(false);
 
@@ -49,11 +57,43 @@ export default function BHDashboard() {
     );
   }
 
+  // ── Auto-calculate helper ─────────────────────────────────
+  const orderTotal = selected?.header?.Indent_Amount || 0;
+
+  const onPctChange = (v: number) => {
+    if (v < 0) v = 0;
+    if (v > 33) v = 33;
+    const rounded = Math.round(v * 100) / 100; // 2 decimal places
+    setDiscountPct(rounded);
+    // Auto-calculate amount from percentage
+    if (orderTotal > 0) {
+      setDiscountAmt(Math.round(orderTotal * rounded / 100 * 100) / 100);
+    }
+  };
+
+  const onAmtChange = (v: number) => {
+    if (v < 0) v = 0;
+    const maxAmt = orderTotal * 0.33; // 33% cap
+    if (v > maxAmt) v = Math.round(maxAmt * 100) / 100;
+    setDiscountAmt(v);
+    // Auto-calculate percentage from amount
+    if (orderTotal > 0) {
+      setDiscountPct(Math.round((v * 100 / orderTotal) * 100) / 100);
+    }
+  };
+
   const openDetail = async (o: any) => {
     try {
       const r = await getOrder(o.Indent_Id);
       setSelected(r.data.data);
-      setDiscount(r.data.data.header.Discount_Pct || 0);
+      const existingPct = r.data.data.header.Discount_Pct || 0;
+      setDiscountPct(existingPct);
+      setDiscountAmt(
+        existingPct > 0 && r.data.data.header.Indent_Amount > 0
+          ? Math.round(r.data.data.header.Indent_Amount * existingPct / 100 * 100) / 100
+          : 0
+      );
+      setDiscountMode('pct');
       setRemarks('');
     } catch { toast.error('Failed to load order detail'); }
   };
@@ -71,24 +111,40 @@ export default function BHDashboard() {
       return;
     }
 
-    const isHighVal = payable * (1 - discountPct / 100) >= 750000;
+    // Validate discount amount doesn't exceed 33%
+    if (discountAmt > payable * 0.33) {
+      toast.error('Discount amount exceeds 33% of order value');
+      return;
+    }
+
+    const effectivePct = discountMode === 'amt' && discountAmt > 0 && payable > 0
+      ? (discountAmt / payable) * 100
+      : discountPct;
+
+    const discountedAmt = discountMode === 'amt'
+      ? payable - discountAmt
+      : payable * (1 - discountPct / 100);
+
+    const isHighVal = discountedAmt >= 750000;
     for (const item of items) {
       const max = maxDiscount(item.Product_Name, isHighVal);
-      if (discountPct > max) {
+      if (effectivePct > max) {
         toast.error(`Max discount for "${item.Product_Name}" is ${max}%`);
         return;
       }
     }
+
     setActing(true);
     try {
       const r = await bhApprove(header.Indent_Id, {
-        discount_pct: discountPct,
-        user_id: session.userId,                 // ← from session, no hardcode
+        discount_pct:    discountMode === 'pct' ? discountPct : 0,
+        discount_amount: discountMode === 'amt' ? discountAmt : 0,
+        user_id: session.userId,
         remarks: remarks || 'BH Approved',
       });
       toast.success('Order approved! Franchisee credentials generated.');
       setSelected(null);
-      setCredsModal(r.data.franchisee_credentials || null);  // Show creds modal
+      setCredsModal(r.data.franchisee_credentials || null);
       load();
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Approve failed'); }
     finally { setActing(false); }
@@ -112,8 +168,16 @@ export default function BHDashboard() {
     finally { setActing(false); }
   };
 
+  // Calculate discounted amount based on active mode
   const discountedAmount = selected
-    ? selected.header.Indent_Amount * (1 - discountPct / 100) : 0;
+    ? discountMode === 'amt'
+      ? selected.header.Indent_Amount - discountAmt
+      : selected.header.Indent_Amount * (1 - discountPct / 100)
+    : 0;
+
+  // Effective discount display values
+  const displayDiscPct = discountPct;
+  const displayDiscAmt = discountAmt;
 
   const copy = (text: string) => navigator.clipboard.writeText(text).then(() => toast.success('Copied'));
 
@@ -224,15 +288,20 @@ export default function BHDashboard() {
                   </div>
                 </div>
 
+                {/* ── Amount Summary ────────────────────────── */}
                 <div className="bg-brand-50 rounded-xl p-4 space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Order Total (MRP)</span>
                     <span className="font-bold">₹{fmt(selected.header.Indent_Amount)}</span>
                   </div>
-                  {discountPct > 0 && (
+                  {(displayDiscPct > 0 || displayDiscAmt > 0) && (
                     <div className="flex justify-between text-emerald-600">
-                      <span>Discount ({discountPct}%)</span>
-                      <span>– ₹{fmt(selected.header.Indent_Amount * discountPct / 100)}</span>
+                      <span>
+                        Discount
+                        {displayDiscPct > 0 ? ` (${displayDiscPct}%)` : ''}
+                        {displayDiscAmt > 0 ? ` = ₹${fmt(displayDiscAmt)}` : ''}
+                      </span>
+                      <span>– ₹{fmt(displayDiscAmt > 0 ? displayDiscAmt : selected.header.Indent_Amount * displayDiscPct / 100)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-brand-700 border-t border-brand-200 pt-2 text-base">
@@ -241,35 +310,84 @@ export default function BHDashboard() {
                   </div>
                 </div>
 
+                {/* ── Discount Input — Percentage OR Amount ──── */}
                 <div>
-                  <label className="label">Discount Percentage (max 33%)</label>
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex-1">
-                      <input type="number" min={0} max={33} step={0.1}
-                        value={discountPct}
-                        onChange={e => {
-                          let v = parseFloat(e.target.value) || 0;
-                          if (v < 0) v = 0;
-                          if (v > 33) v = 33;
-                          setDiscount(Math.round(v * 10) / 10);
-                        }}
-                        onBlur={e => {
-                          let v = parseFloat(e.target.value) || 0;
-                          if (v < 0) v = 0;
-                          if (v > 33) v = 33;
-                          setDiscount(Math.round(v * 10) / 10);
-                        }}
-                        className="input pr-8 text-right font-bold text-brand-700" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">%</span>
-                    </div>
-                    {discountPct > 0 && (
-                      <div className="text-right min-w-[120px]">
-                        <p className="text-xs text-slate-400">Discount Amt</p>
-                        <p className="text-sm font-bold text-emerald-600">– ₹{fmt(selected.header.Indent_Amount * discountPct / 100)}</p>
-                      </div>
-                    )}
+                  <label className="label mb-2">Discount (max 33%)</label>
+
+                  {/* Mode Toggle */}
+                  <div className="flex rounded-lg overflow-hidden border border-slate-200 mb-3 w-fit">
+                    <button
+                      type="button"
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
+                        discountMode === 'pct'
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      onClick={() => setDiscountMode('pct')}
+                    >
+                      By Percentage (%)
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
+                        discountMode === 'amt'
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      onClick={() => setDiscountMode('amt')}
+                    >
+                      By Amount (₹)
+                    </button>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Enter exact value like 2.3, 5.5, 10 etc. Max allowed: 33%</p>
+
+                  {/* Percentage Mode */}
+                  {discountMode === 'pct' && (
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input type="number" min={0} max={33} step={0.01}
+                          value={discountPct || ''}
+                          placeholder="0"
+                          onChange={e => onPctChange(parseFloat(e.target.value) || 0)}
+                          onBlur={e => onPctChange(parseFloat(e.target.value) || 0)}
+                          className="input pr-8 text-right font-bold text-brand-700" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">%</span>
+                      </div>
+                      {discountPct > 0 && (
+                        <div className="text-right min-w-[130px]">
+                          <p className="text-xs text-slate-400">Discount Amount</p>
+                          <p className="text-sm font-bold text-emerald-600">= ₹{fmt(discountAmt)}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Amount Mode */}
+                  {discountMode === 'amt' && (
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">₹</span>
+                        <input type="number" min={0} step={0.01}
+                          value={discountAmt || ''}
+                          placeholder="0"
+                          onChange={e => onAmtChange(parseFloat(e.target.value) || 0)}
+                          onBlur={e => onAmtChange(parseFloat(e.target.value) || 0)}
+                          className="input pl-8 text-right font-bold text-brand-700" />
+                      </div>
+                      {discountAmt > 0 && (
+                        <div className="text-right min-w-[130px]">
+                          <p className="text-xs text-slate-400">Discount %</p>
+                          <p className="text-sm font-bold text-emerald-600">= {discountPct}%</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    {discountMode === 'pct'
+                      ? 'Enter percentage (e.g. 2.3, 5.55, 16.52). Amount auto-calculates.'
+                      : 'Enter exact discount amount in rupees. Percentage auto-calculates.'}
+                    {' '}Max allowed: 33%.
+                  </p>
                 </div>
 
                 <div>
