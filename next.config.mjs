@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const API_ORIGIN = 'https://kubapi.zeelearn.com';
 const API_BASE   = '/V1/commonapieml/api/Zniusorder';
-
+// const API_ORIGIN = 'http://localhost:3001';
+// const API_BASE   = '/api/Zniusorder';
 const nextConfig = {
   reactStrictMode: true,
   env: {
