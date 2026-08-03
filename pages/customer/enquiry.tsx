@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import toast from 'react-hot-toast';
 import {
   User, ShieldCheck, ShoppingCart, CheckCircle,
   ChevronRight, Plus, Trash2, Loader2, ExternalLink,
+  LogIn, AlertTriangle,
 } from 'lucide-react';
 import {
   getCountries, getStates, getCities, getProducts, getSubjects, getClasses,
   createFranchisee, saveAddress, saveKYC, createOrder,
   verifyGST, verifyPAN, verifyAadhar,
+  checkExistingFranchisee,
 } from '../../lib/api';
 
 const STEPS = ['Personal & School', 'KYC Verification', 'Order Details', 'Terms & Submit'];
@@ -20,9 +23,19 @@ interface Item {
 }
 
 export default function EnquiryPage() {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<number | null>(null);
+
+  // ── Returning franchisee detection ────────────────────────
+  const [existingCheck, setExistingCheck] = useState<{
+    checked: boolean;
+    is_existing: boolean;
+    franchisee_code?: string;
+    franchisee_name?: string;
+  }>({ checked: false, is_existing: false });
+  const [checkingExisting, setCheckingExisting] = useState(false);
 
   // Lookups
   const [states, setStates] = useState<any[]>([]);
@@ -39,7 +52,7 @@ export default function EnquiryPage() {
     country_id: 1,
   });
 
-  // Zone options — DB me Zone_Code short form save hota hai
+  // Zone options
   const ZONES = [
     { code: 'W', name: 'West Zone' },
     { code: 'E', name: 'East Zone' },
@@ -59,7 +72,7 @@ export default function EnquiryPage() {
 
   // Step 3 – Terms
   const [termsOpened, setTermsOpened]     = useState(false);
-  const [termsLoaded, setTermsLoaded]     = useState(false); 
+  const [termsLoaded, setTermsLoaded]     = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsInline, setShowTermsInline] = useState(false);
 
@@ -119,6 +132,38 @@ export default function EnquiryPage() {
     }
   };
 
+  // ─── Check if franchisee already exists ─────────────────────
+  const handleCheckExisting = async () => {
+    setCheckingExisting(true);
+    try {
+      const r = await checkExistingFranchisee({
+        school_name: personal.school_name,
+        pan_no:      kyc.pan_no,
+        gst_no:      kyc.gst_no,
+      });
+      const data = r.data;
+      if (data.is_existing) {
+        setExistingCheck({
+          checked: true,
+          is_existing: true,
+          franchisee_code: data.franchisee_code,
+          franchisee_name: data.franchisee_name,
+        });
+        // Don't auto-redirect; show the message and let user click Login
+      } else {
+        setExistingCheck({ checked: true, is_existing: false });
+        // Not existing → proceed to step 2 (Order Details)
+        setStep(2);
+      }
+    } catch {
+      // If check fails, allow the user to continue as new franchisee
+      setExistingCheck({ checked: true, is_existing: false });
+      setStep(2);
+    } finally {
+      setCheckingExisting(false);
+    }
+  };
+
   // ─── Product lookup by Product_Code ─────────────────────────
   const findProduct = (type: Item['type']) => {
     const codeMap: Record<Item['type'], string> = {
@@ -153,16 +198,25 @@ export default function EnquiryPage() {
   const isFinanceEligible = total >= 750000;
 
   // ─── Step validation ─────────────────────────────────────────
+  // CHANGED: KYC now requires ALL THREE fields verified
   const canNext = () => {
     if (step === 0)
       return personal.name && personal.email && personal.phone &&
              personal.school_name && personal.address1 && personal.place &&
              personal.zone_code && personal.pincode && personal.state_id;
     if (step === 1)
-      return kyc.gst_verified || kyc.pan_verified || kyc.aadhar_verified;
+      return kyc.gst_verified && kyc.pan_verified && kyc.aadhar_verified;
     if (step === 2)
       return items.length > 0 && items.every(i => i.quantity > 0 && i.product_id);
     return termsAccepted;
+  };
+
+  // ─── Handle "Continue" from KYC step ─────────────────────────
+  // Instead of directly going to step 2, check for existing franchisee first
+  const handleKYCContinue = () => {
+    // Reset existing check state when KYC data might have changed
+    setExistingCheck({ checked: false, is_existing: false });
+    handleCheckExisting();
   };
 
   // ─── Terms open ──────────────────────────────────────────────
@@ -245,11 +299,14 @@ export default function EnquiryPage() {
             Our Branch Head will review your request. You'll be notified once it's approved and ready for payment.
           </p>
           <div className="flex gap-3 justify-center">
-            <a href="/customer/orders" className="btn-primary">View My Orders</a>
+            <a href="/login" className="btn-primary flex items-center gap-2">
+              <LogIn size={15} /> Login to Track Orders
+            </a>
             <button className="btn-outline" onClick={() => {
               setSubmitted(null); setStep(0); setItems([]);
               setTermsAccepted(false); setTermsLoaded(false);
               setTermsOpened(false); setShowTermsInline(false);
+              setExistingCheck({ checked: false, is_existing: false });
             }}>
               New Enquiry
             </button>
@@ -376,13 +433,16 @@ export default function EnquiryPage() {
               <h2 className="font-display text-lg font-semibold flex items-center gap-2">
                 <ShieldCheck size={18} className="text-brand-500" /> KYC Verification
               </h2>
+
+              {/* CHANGED: All three documents are mandatory */}
               <p className="text-sm text-slate-500 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                Please verify <strong>at least one</strong> document (GST / PAN / Aadhar) to continue.
+                All three documents are <strong>mandatory</strong>. Please verify GST, PAN, and Aadhar to continue.
               </p>
+
               {[
-                { key: 'gst',    label: 'GST Number',    field: 'gst_no',    placeholder: '15-character GST No (e.g. 09LLQPS8572M1ZJ)' },
-                { key: 'pan',    label: 'PAN Number',    field: 'pan_no',    placeholder: 'ABCDE1234F' },
-                { key: 'aadhar', label: 'Aadhar Number', field: 'aadhar_no', placeholder: '12-digit Aadhar' },
+                { key: 'gst',    label: 'GST Number *',    field: 'gst_no',    placeholder: '15-character GST No (e.g. 09LLQPS8572M1ZJ)' },
+                { key: 'pan',    label: 'PAN Number *',    field: 'pan_no',    placeholder: 'ABCDE1234F' },
+                { key: 'aadhar', label: 'Aadhar Number *', field: 'aadhar_no', placeholder: '12-digit Aadhar' },
               ].map(({ key, label, field, placeholder }) => {
                 const verified = kyc[`${key}_verified` as keyof typeof kyc] as boolean;
                 const loading  = kyc[`${key}_loading`  as keyof typeof kyc] as boolean;
@@ -407,6 +467,33 @@ export default function EnquiryPage() {
                   </div>
                 );
               })}
+
+              {/* ── Existing franchisee detected ── */}
+              {existingCheck.is_existing && (
+                <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={22} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-display font-bold text-blue-900 mb-1">
+                        You are already registered!
+                      </p>
+                      <p className="text-sm text-blue-800">
+                        A franchisee account matching your School Name, PAN, and GST already exists
+                        {existingCheck.franchisee_code && (
+                          <> with code <strong>{existingCheck.franchisee_code}</strong></>
+                        )}.
+                        Please log in to place a new order.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className="btn-primary w-full flex items-center justify-center gap-2"
+                    onClick={() => router.push('/login')}
+                  >
+                    <LogIn size={16} /> Go to Login
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -529,7 +616,7 @@ export default function EnquiryPage() {
                 )}
               </div>
 
-              {/* View Terms button — sirf tab dikhao jab PDF abhi open nahi */}
+              {/* View Terms button */}
               {!termsOpened && (
                 <button className="btn-outline w-full flex items-center justify-center gap-2"
                   onClick={handleOpenTerms}>
@@ -540,7 +627,6 @@ export default function EnquiryPage() {
               {/* PDF Viewer */}
               {showTermsInline && (
                 <div className="border-2 border-slate-200 rounded-2xl overflow-hidden">
-                  {/* Header bar */}
                   <div className="bg-slate-800 text-white text-xs px-4 py-2.5 flex justify-between items-center">
                     <span className="font-semibold">Terms & Conditions — ZNius Order Agreement</span>
                     <button className="text-white/60 hover:text-white text-xs"
@@ -548,8 +634,6 @@ export default function EnquiryPage() {
                       Collapse
                     </button>
                   </div>
-
-                  {/* PDF iframe */}
                   <div className="bg-white">
                     <iframe
                       src="/TnC_Znius.pdf"
@@ -559,12 +643,10 @@ export default function EnquiryPage() {
                       onLoad={() => setTermsLoaded(true)}
                     />
                   </div>
-
-                  {/* Status bar */}
                   <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs">
                     {!termsLoaded
                       ? <span className="text-amber-500 font-medium flex items-center gap-1">
-                          <Loader2 size={12} className="animate-spin" /> PDF load ho raha hai...
+                          <Loader2 size={12} className="animate-spin" /> Loading PDF…
                         </span>
                       : <span className="text-emerald-600 font-medium">
                           ✓ Terms loaded — you may now accept below
@@ -574,7 +656,7 @@ export default function EnquiryPage() {
                 </div>
               )}
 
-              {/* Checkbox — PDF load hone ke baad enable hoga */}
+              {/* Checkbox */}
               <label className={`flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all
                 ${!(termsOpened && termsLoaded)
                   ? 'opacity-50 cursor-not-allowed border-slate-200'
@@ -594,7 +676,7 @@ export default function EnquiryPage() {
                   {!termsOpened &&
                     <span className="text-slate-400 ml-2">(Please view the terms first)</span>}
                   {termsOpened && !termsLoaded &&
-                    <span className="text-amber-500 ml-2">(PDF load hone ka wait karo)</span>}
+                    <span className="text-amber-500 ml-2">(Waiting for PDF to load)</span>}
                 </div>
               </label>
             </div>
@@ -608,11 +690,20 @@ export default function EnquiryPage() {
             ← Back
           </button>
           {step < STEPS.length - 1
-            ? <button className="btn-primary flex items-center gap-2"
-                disabled={!canNext()}
-                onClick={() => setStep(s => s + 1)}>
-                Continue <ChevronRight size={16} />
-              </button>
+            ? step === 1
+              ? /* KYC step: check existing before proceeding */
+                <button className="btn-primary flex items-center gap-2"
+                  disabled={!canNext() || checkingExisting || existingCheck.is_existing}
+                  onClick={handleKYCContinue}>
+                  {checkingExisting
+                    ? <><Loader2 size={15} className="animate-spin" /> Checking…</>
+                    : <>Continue <ChevronRight size={16} /></>}
+                </button>
+              : <button className="btn-primary flex items-center gap-2"
+                  disabled={!canNext()}
+                  onClick={() => setStep(s => s + 1)}>
+                  Continue <ChevronRight size={16} />
+                </button>
             : <button className="btn-primary flex items-center gap-2"
                 disabled={!canNext() || submitting}
                 onClick={handleSubmit}>
