@@ -1,14 +1,23 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
-import { FileText, ClipboardList, UserCheck, DollarSign, Menu, X, Package } from 'lucide-react';
+import {
+  FileText, ClipboardList, UserCheck, DollarSign,
+  Menu, X, Package, LogIn, Building2,
+} from 'lucide-react';
 
-type Role = 'customer' | 'bh' | 'finance';
+type Role = 'customer' | 'customer_logged_in' | 'bh' | 'finance';
 
 const MENUS: Record<Role, { href: string; label: string; icon: any }[]> = {
+  // Unauthenticated customer — enquiry page only, with Login button
   customer: [
     { href: '/customer/enquiry', label: 'New Enquiry',  icon: FileText },
-    { href: '/customer/orders',  label: 'My Orders',    icon: ClipboardList },
+    { href: '/login',            label: 'Login',        icon: LogIn },
+  ],
+  // Authenticated customer — separate Virtual Account + Orders
+  customer_logged_in: [
+    { href: '/customer/orders',          label: 'Orders',          icon: ClipboardList },
+    { href: '/customer/virtual-account', label: 'Virtual Account', icon: Building2 },
   ],
   bh: [
     { href: '/bh/dashboard',    label: 'Approval Desk', icon: UserCheck },
@@ -18,25 +27,37 @@ const MENUS: Record<Role, { href: string; label: string; icon: any }[]> = {
   ],
 };
 
-const ROLE_STYLE: Record<Role, string> = {
-  customer: 'from-brand-700 to-brand-900',
-  bh:       'from-violet-700 to-violet-900',
-  finance:  'from-emerald-700 to-emerald-900',
+// Map roles to header gradient styles
+const ROLE_STYLE: Record<string, string> = {
+  customer:           'from-brand-700 to-brand-900',
+  customer_logged_in: 'from-brand-700 to-brand-900',
+  bh:                 'from-violet-700 to-violet-900',
+  finance:            'from-emerald-700 to-emerald-900',
 };
-const ROLE_LABEL: Record<Role, string> = {
-  customer: 'Customer Portal',
-  bh:       'Branch Head',
-  finance:  'Finance',
+const ROLE_LABEL: Record<string, string> = {
+  customer:           'Customer Portal',
+  customer_logged_in: 'Customer Portal',
+  bh:                 'Branch Head',
+  finance:            'Finance',
 };
 
-export default function Layout({ children, role = 'customer' }: { children: React.ReactNode; role?: Role }) {
+export default function Layout({
+  children,
+  role = 'customer',
+}: {
+  children: React.ReactNode;
+  role?: Role;
+}) {
   const router   = useRouter();
   const [open, setOpen] = useState(false);
-  const menus    = MENUS[role];
+  const menus    = MENUS[role] || MENUS.customer;
+
+  const styleKey = ROLE_STYLE[role] || ROLE_STYLE.customer;
+  const labelKey = ROLE_LABEL[role] || ROLE_LABEL.customer;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className={`bg-gradient-to-r ${ROLE_STYLE[role]} shadow-lg`}>
+      <header className={`bg-gradient-to-r ${styleKey} shadow-lg`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
@@ -45,7 +66,7 @@ export default function Layout({ children, role = 'customer' }: { children: Reac
             </div>
             <div>
               <p className="font-display font-bold text-white text-lg leading-none">ZNius</p>
-              <p className="text-white/60 text-xs">{ROLE_LABEL[role]}</p>
+              <p className="text-white/60 text-xs">{labelKey}</p>
             </div>
           </div>
 
@@ -61,7 +82,6 @@ export default function Layout({ children, role = 'customer' }: { children: Reac
                 </Link>
               );
             })}
-
           </nav>
 
           {/* Mobile */}

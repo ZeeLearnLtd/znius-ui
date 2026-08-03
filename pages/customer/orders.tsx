@@ -496,7 +496,7 @@ export default function CustomerOrdersPage() {
   };
 
   return (
-    <Layout role="customer">
+    <Layout role="customer_logged_in">
       <div className="space-y-4">
         <div className="flex justify-between items-center flex-wrap gap-3">
           <div>
@@ -508,6 +508,9 @@ export default function CustomerOrdersPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <a href="/customer/new-order" className="btn-primary flex items-center gap-2 text-sm">
+              + New Order
+            </a>
             <button className="btn-outline flex items-center gap-2" onClick={load}>
               <RefreshCw size={14} /> Refresh
             </button>

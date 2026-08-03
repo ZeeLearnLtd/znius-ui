@@ -31,8 +31,16 @@ export const verifyGST           = (v: string)    => api.post('/kyc/verify-gst',
 export const verifyPAN           = (v: string)    => api.post('/kyc/verify-pan',    { pan_no: v });
 export const verifyAadhar        = (v: string)    => api.post('/kyc/verify-aadhar', { aadhar_no: v });
 
+// ── Check Existing Franchisee (returning user detection) ────
+export const checkExistingFranchisee = (d: {
+  school_name: string; pan_no: string; gst_no: string;
+}) => api.post('/franchisee/check-existing', d);
+
 // ── Orders ───────────────────────────────────────────────────
 export const createOrder = (d: any) => api.post('/order/create', d);
+
+// Create order for returning franchisee (no new franchisee/KYC creation)
+export const createOrderReturning = (d: any) => api.post('/order/create-returning', d);
 export const getOrders   = (params?: { franchisee_id?: number; franchisee_code?: string; status?: string }) =>
   api.get('/orders', { params });
 export const getOrder    = (id: number) => api.get(`/order/${id}`);

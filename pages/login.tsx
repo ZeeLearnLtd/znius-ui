@@ -142,5 +142,5 @@ function redirectByRole(userType: string, router: any) {
   if      (userType === 'F')   router.replace('/customer/orders');
   else if (userType === 'BH')  router.replace('/bh/dashboard');
   else if (userType === 'ACC') router.replace('/finance/dashboard');
-  else router.replace('/');
+  else                         router.replace('/');
 }
